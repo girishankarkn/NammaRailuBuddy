@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +58,10 @@ class MainActivity : ComponentActivity() {
     private fun requestLocationPermission() {
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
             1
         )
     }
@@ -69,27 +73,36 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startLiveTracking(targetStation: Station) {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).build()
+        // Corrected Priority import to use Google GMS Location Priority
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+            .setWaitForAccurateLocation(false)
+            .build()
+
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                for (location in locationResult.locations) {
-                    val results = FloatArray(1)
-                    android.location.Location.distanceBetween(
-                        location.latitude, location.longitude,
-                        targetStation.lat, targetStation.lon,
-                        results
-                    )
-                    distanceToTarget.value = (results[0] / 1000).toDouble()
+                val location = locationResult.lastLocation ?: return
+
+                val results = FloatArray(1)
+                android.location.Location.distanceBetween(
+                    location.latitude, location.longitude,
+                    targetStation.lat, targetStation.lon,
+                    results
+                )
+
+                val currentDist = (results[0] / 1000).toDouble()
+                distanceToTarget.value = currentDist
+
+                if (currentDist <= 5.0 && isTracking.value) {
                     checkAlarmCondition(targetStation.name)
                 }
             }
         }
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback!!, Looper.getMainLooper())
         }
     }
 
-    // --- RECTIFIED: UNIVERSAL PING LOGIC ---
     private fun sendPlatformPing(stationName: String) {
         val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
         val currentCount = (stationPingMap[stationName] ?: 0) + 1
@@ -119,20 +132,28 @@ class MainActivity : ComponentActivity() {
     private fun triggerAlarm(message: String) {
         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 500, 1000), 0))
+
         try {
             val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            val mediaPlayer = MediaPlayer().apply {
+            mediaPlayer = MediaPlayer().apply {
                 setDataSource(this@MainActivity, alarmUri)
                 setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
                 prepare()
                 start()
             }
+
             Handler(Looper.getMainLooper()).postDelayed({
-                if (mediaPlayer.isPlaying) mediaPlayer.stop()
-                mediaPlayer.release()
+                mediaPlayer?.let {
+                    if (it.isPlaying) it.stop()
+                    it.release()
+                }
+                mediaPlayer = null
                 vibrator.cancel()
             }, 10000)
-        } catch (e: Exception) { e.printStackTrace() }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
@@ -151,7 +172,6 @@ class MainActivity : ComponentActivity() {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Text("NAMMA RAILU BUDDY", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
-            // 1. Community Alert View
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
@@ -164,7 +184,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 2. Dual Selection Dropdowns
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(modifier = Modifier.weight(1f)) {
                     OutlinedButton(onClick = { expandedFrom = true }, modifier = Modifier.fillMaxWidth()) {
@@ -190,7 +209,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(15.dp))
 
-            // 3. Tracking Display
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("DISTANCE TO ${toStation.name.uppercase()}", fontSize = 12.sp, color = Color.Gray)
@@ -200,7 +218,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(15.dp))
 
-            // 4. Coach Position Guide with ENGINE
             Text("Platform Guide (Coach Position):", fontSize = 14.sp, fontWeight = FontWeight.Bold)
             val coaches = listOf("ENG", "GEN", "S1", "S2", "S3", "S4", "LADIES", "S5", "S6", "GEN")
             LazyRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -213,7 +230,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 5. RECTIFIED ACTION BUTTONS (Ping Both Stations)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { sendPlatformPing(fromStation.name) },
@@ -225,7 +241,7 @@ class MainActivity : ComponentActivity() {
                 Button(
                     onClick = { sendPlatformPing(toStation.name) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)) // Slightly darker green
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
                     Text("PING ${toStation.name.uppercase()}", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
