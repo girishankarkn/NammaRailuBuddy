@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068632870327",
+    "project_id": "nammarailubuddy-8f865",
+    "storage_bucket": "nammarailubuddy-8f865.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068632870327:android:2df29e9d0123ccd8e1ac32",
+        "android_client_info": {
+          "package_name": "com.vtu.nammarailubuddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgRko_UtYdvoDRNpsFrX9d0ewFZ2Znxu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
