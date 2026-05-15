@@ -1,4 +1,4 @@
-This is my first GitHub project.
+## TITLE OF THE PROJECT.
 NAMMA RAILU BUDDY
 ## DESCRIPTION
 Namma Railu Buddy is an android application designed as a passenger guide to city workers who rely on passanger trains. The project aims to use generative AI and community driven data to solve common navigation and information issues at small railway stations
@@ -12,5 +12,6 @@ Namma Railu Buddy is an android application designed as a passenger guide to cit
 - JETPACK COMPOSE
 - FIREBASE CONSOLE
 - LOCATION GEOFENCING
+- ANDROID STUDIO
 ## AUTHOR
 GIRI SHANKAR K N
